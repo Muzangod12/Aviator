@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Aviator</title>
+<style>
+body { font-family: Arial; background:#0b1020; color:#fff; text-align:center }
+.box { max-width:420px; margin:auto; padding:15px }
+h1 { color:gold }
+.card { background:#11162a; padding:15px; border-radius:10px; margin:10px 0 }
+button { padding:10px; margin:5px; border:none; background:gold; font-weight:bold; cursor:pointer }
+input { width:100%; padding:8px; margin:5px 0 }
+.mult { font-size:38px; color:lime }
+.crash { color:red }
+.hidden { display:none }
+table { width:100%; color:#fff; font-size:12px }
+th,td { border-bottom:1px solid #333; padding:5px }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h1>✈️ AVIATOR</h1>
+<p>TEAM GAGNER + | Version Démo</p>
+
+<div id="login" class="card">
+  <input id="user" placeholder="Nom utilisateur">
+  <input id="ref" placeholder="Code parrain (optionnel)">
+  <button onclick="login()">Entrer</button>
+</div>
+
+<div id="game" class="hidden">
+
+<div class="card">
+  <div id="balance">Solde : 1000</div>
+  <input id="bet" placeholder="Mise">
+  <button onclick="start()">Jouer</button>
+  <button onclick="cashout()">Retirer</button>
+  <div id="mult" class="mult">1.00x</div>
+  <div id="status"></div>
+</div>
+
+<div class="card">
+  <button onclick="deposit()">+ Dépôt</button>
+  <button onclick="withdraw()">- Retrait</button>
+</div>
+
+<div class="card">
+  <b>Classement (Concours)</b>
+  <div id="leaderboard"></div>
+</div>
+
+<button onclick="openAdmin()">Panel Admin</button>
+</div>
+
+<div id="admin" class="hidden card">
+<h3>🔐 Panel Administrateur</h3>
+<input id="adminUser" placeholder="Admin">
+<input id="adminPass" placeholder="Mot de passe">
+<button onclick="adminLogin()">Connexion</button>
+
+<div id="adminPanel" class="hidden">
+<h4>Utilisateurs</h4>
+<table id="usersTable"></table>
+<button onclick="resetAll()">RESET TOUT</button>
+</div>
+</div>
+
+</div>
+
+<script>
+let users = JSON.parse(localStorage.getItem("aviator_users") || "{}");
+let current = null;
+let mult=1, loop=null, bet=0;
+
+function save(){localStorage.setItem("aviator_users",JSON.stringify(users))}
+
+function login(){
+ let u=user.value.trim();
+ if(!u) return alert("Nom requis");
+ if(!users[u]){
+   users[u]={balance:1000,wins:0,ref:ref.value||null}
+   if(ref.value && users[ref.value]) users[ref.value].balance+=200;
+ }
+ current=u; save();
+ loginDiv(false);
+}
+
+function loginDiv(show){
+ document.getElementById("login").className=show?"card":"hidden";
+ document.getElementById("game").className=show?"hidden":"";
+ update();
+}
+
+function update(){
+ balance.innerText="Solde : "+users[current].balance;
+}
+
+function start(){
+ bet=parseFloat(betInput.value||0);
+ if(bet<=0||bet>users[current].balance) return alert("Mise invalide");
+ users[current].balance-=bet; mult=1;
+ loop=setInterval(()=>{
+   mult+=Math.random()*0.06;
+   multDiv.innerText=mult.toFixed(2)+"x";
+   if(Math.random()<0.01*mult) crash();
+ },100);
+ save(); update();
+}
+
+function cashout(){
+ if(!loop) return;
+ clearInterval(loop); loop=null;
+ let win=bet*mult;
+ users[current].balance+=win;
+ users[current].wins+=win;
+ status.innerText="Retiré à "+mult.toFixed(2)+"x";
+ save(); update(); leaderboard();
+}
+
+function crash(){
+ clearInterval(loop); loop=null;
+ multDiv.innerText="CRASH";
+ multDiv.className="mult crash";
+ save();
+}
+
+function deposit(){ users[current].balance+=500; save(); update(); }
+function withdraw(){ users[current].balance-=100; save(); update(); }
+
+function leaderboard(){
+ let arr=Object.entries(users).sort((a,b)=>b[1].wins-a[1].wins);
+ leaderboardDiv.innerHTML=arr.slice(0,5).map(u=>u[0]+" : "+u[1].wins).join("<br>");
+}
+
+function openAdmin(){ adminDiv.className="card"; }
+
+function adminLogin(){
+ if(adminUser.value==="admin" && adminPass.value==="admin123"){
+   adminPanel.className="";
+   loadUsers();
+ } else alert("Accès refusé");
+}
+
+function loadUsers(){
+ usersTable.innerHTML="<tr><th>User</th><th>Solde</th><th>Gains</th></tr>";
+ for(let u in users){
+  usersTable.innerHTML+=`<tr><td>${u}</td><td>${users[u].balance}</td><td>${users[u].wins}</td></tr>`;
+ }
+}
+
+function resetAll(){ if(confirm("RESET ?")){localStorage.clear();location.reload()} }
+
+const user=document.getElementById("user");
+const ref=document.getElementById("ref");
+const balance=document.getElementById("balance");
+const betInput=document.getElementById("bet");
+const multDiv=document.getElementById("mult");
+const status=document.getElementById("status");
+const leaderboardDiv=document.getElementById("leaderboard");
+const adminDiv=document.getElementById("admin");
+</script>
+</body>
+</html>
